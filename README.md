@@ -54,8 +54,12 @@ profile = "Personal"
   the directory to disambiguate.
 
 Rules are tried in order, first match wins. Edits apply on the next click — no
-restart. If the config is missing or malformed, URLs go to Safari and the parse
-error goes to stderr.
+restart. If the config is missing or malformed, URLs go to Safari.
+
+Anything that would drop a click — an unparseable config, a `browser` that
+isn't installed — raises an alert and is logged (`log stream --predicate
+'process == "persnickety"'`, or Console.app). An alert rather than a
+Notification Center banner, because Focus modes silence banners.
 
 Chrome only for profiles. Other browsers launch, but ignore `profile`.
 

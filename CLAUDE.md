@@ -26,7 +26,7 @@ Explicit non-goals unless revisited:
 
 ## Status
 
-v1 implemented, not yet committed. Swift + SwiftPM, one source file
+v1 shipped, Apache-2.0. Swift + SwiftPM, one source file
 (`Sources/persnickety/main.swift`), TOML config at
 `~/.config/persnickety/config.toml`, packaged as a faceless menubar `.app` by
 `scripts/build.sh`. See `README.md` for config format and install steps.

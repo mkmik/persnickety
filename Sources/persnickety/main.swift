@@ -51,7 +51,9 @@ final class Router {
 
     private var rules: [Rule] = []
     private var profileDirs: [String: String] = [:]
-    private var stamp: Date?
+    // .distantPast, not nil: a missing config also stats as nil, and starting
+    // equal to it would skip the load and swallow the "no such file" report.
+    private var stamp: Date? = .distantPast
 
     /// Reloads when the config's mtime changes. Called on every dispatch —
     /// a stat per click is free, and unlike a DispatchSource watcher it
@@ -67,7 +69,7 @@ final class Router {
                      browser: $0.browser, profile: $0.profile)
             }
         } catch {
-            FileHandle.standardError.write(Data("persnickety: \(Self.configPath.path): \(error)\n".utf8))
+            report("\(Self.configPath.path): \(error)")
             rules = []
         }
         profileDirs = Self.chromeProfileDirs()
@@ -131,8 +133,33 @@ final class Router {
         } else {
             process.executableURL = URL(filePath: "/usr/bin/open")
             process.arguments = ["-a", rule.browser, raw]
+            // Only this branch is watchable: `open` always exits promptly, while
+            // Chrome's own binary becomes the browser and lives for hours.
+            process.terminationHandler = { child in
+                guard child.terminationStatus != 0 else { return }
+                report("\(rule.browser) did not open \(raw).")
+            }
         }
-        try? process.run()
+        do {
+            try process.run()
+        } catch {
+            report("could not launch \(rule.browser): \(error.localizedDescription)")
+        }
+    }
+}
+
+/// A dropped click is the one failure this app must never hide, so: an alert,
+/// not a Notification Center banner — banners are silenced by Focus modes.
+/// NSLog goes to the unified log, and to stderr when stderr is a tty (`--route`).
+func report(_ message: String) {
+    NSLog("persnickety: %@", message)
+    guard NSApp != nil else { return }  // --route has no app to put an alert on
+    DispatchQueue.main.async {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "persnickety"
+        alert.informativeText = message
+        alert.runModal()
     }
 }
 
@@ -186,10 +213,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
 // MARK: - Entry
 
-let arguments = CommandLine.arguments
-if arguments.count == 3, arguments[1] == "--route" {
-    print(Router().describe(arguments[2]))
-    exit(0)
+let arguments = Array(CommandLine.arguments.dropFirst())
+if !arguments.isEmpty {
+    if arguments.count == 2, arguments[0] == "--route" {
+        print(Router().describe(arguments[1]))
+        exit(0)
+    }
+    // Anything unrecognized exits instead of falling through to app.run(), where
+    // a typo would silently start a second menubar instance and appear to hang.
+    let help = arguments == ["--help"]
+    FileHandle(fileDescriptor: help ? 1 : 2)
+        .write(Data("usage: persnickety [--route <url>]\n".utf8))
+    exit(help ? 0 : 2)
 }
 
 let app = NSApplication.shared
