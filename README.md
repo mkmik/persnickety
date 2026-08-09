@@ -13,7 +13,8 @@ specific Chrome profile — by hostname.
 ## Install
 
 ```sh
-cp -r dist/persnickety.app /Applications/
+rm -rf /Applications/persnickety.app   # cp -R into an existing bundle nests a copy inside it
+cp -R dist/persnickety.app /Applications/
 open /Applications/persnickety.app
 ```
 
