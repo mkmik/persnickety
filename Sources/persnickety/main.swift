@@ -19,11 +19,11 @@ private struct ConfigFile: Decodable {
 let starterConfig = """
     # Rules are tried in order; the first match wins.
     # `hosts` matches the URL host exactly or as a suffix:
-    # "nvidia.com" matches nvidia.com and foo.nvidia.com, but not evilnvidia.com.
+    # "example.com" matches example.com and foo.example.com, but not notexample.com.
 
     [[rule]]
-    # Work SSO/auth domains
-    hosts = ["localhost", "nvidia.com", "login.microsoftonline.com", "paloaltonetworks.com"]
+    # Your work domains, plus whatever SSO or VPN portal they bounce through.
+    hosts = ["localhost", "example.com", "login.microsoftonline.com"]
     browser = "Google Chrome"
     profile = "Work"
 

@@ -10,9 +10,9 @@ CFG=$(mktemp "${TMPDIR:-/tmp}/persnickety.XXXXXX")
 trap 'rm -f "$CFG"' EXIT
 cat > "$CFG" <<'TOML'
 [[rule]]
-hosts = ["localhost", "nvidia.com", "login.microsoftonline.com"]
+hosts = ["localhost", "example.com", "login.example.net"]
 browser = "Google Chrome"
-profile = "Profile 18"
+profile = "Profile 3"
 
 [[rule]]
 browser = "Firefox"
@@ -29,12 +29,12 @@ check() { # check <url> <expected> <what>
 	fi
 }
 
-check "$CFG" https://foo.bar.nvidia.com/x 'Google Chrome\tProfile 18' "suffix match"
-check "$CFG" https://nvidia.com          'Google Chrome\tProfile 18' "exact match"
-check "$CFG" http://localhost:3000/       'Google Chrome\tProfile 18' "port ignored"
-check "$CFG" https://news.ycombinator.com 'Firefox\t-'                "catch-all rule"
-# tighter than finicky's unanchored /login\.microsoftonline\.com$/, which matches this
-check "$CFG" https://evillogin.microsoftonline.com 'Firefox\t-'       "suffix needs a dot"
-check /nonexistent/config.toml https://nvidia.com  'Safari\t-'        "broken config falls back"
+check "$CFG" https://foo.bar.example.com/x 'Google Chrome\tProfile 3' "suffix match"
+check "$CFG" https://example.com           'Google Chrome\tProfile 3' "exact match"
+check "$CFG" http://localhost:3000/        'Google Chrome\tProfile 3' "port ignored"
+check "$CFG" https://news.ycombinator.com  'Firefox\t-'               "catch-all rule"
+# tighter than finicky's unanchored /login\.example\.net$/, which matches this
+check "$CFG" https://evillogin.example.net 'Firefox\t-'               "suffix needs a dot"
+check /nonexistent/config.toml https://example.com 'Safari\t-'        "broken config falls back"
 
 exit $fail

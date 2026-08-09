@@ -35,8 +35,8 @@ the config writes a starter file if you don't have one yet.
 
 ```toml
 [[rule]]
-# Work SSO/auth domains
-hosts = ["localhost", "nvidia.com", "login.microsoftonline.com", "paloaltonetworks.com"]
+# Your work domains, plus whatever SSO or VPN portal they bounce through.
+hosts = ["localhost", "example.com", "login.microsoftonline.com"]
 browser = "Google Chrome"
 profile = "Work"
 
@@ -46,11 +46,11 @@ browser = "Google Chrome"
 profile = "Personal"
 ```
 
-- **hosts** — matched exactly or as a suffix. `nvidia.com` matches `nvidia.com`
-  and `foo.nvidia.com`, but not `evilnvidia.com`.
+- **hosts** — matched exactly or as a suffix. `example.com` matches
+  `example.com` and `foo.example.com`, but not `notexample.com`.
 - **browser** — application name in `/Applications`.
 - **profile** — Chrome profile as shown in Chrome's own UI (`Work`), or the
-  literal directory (`Profile 18`). Two profiles can share a display name; use
+  literal directory (`Profile 3`). Two profiles can share a display name; use
   the directory to disambiguate.
 
 Rules are tried in order, first match wins. Edits apply on the next click — no
@@ -66,8 +66,8 @@ Chrome only for profiles. Other browsers launch, but ignore `profile`.
 ## Checking a rule
 
 ```sh
-$ persnickety --route https://foo.nvidia.com
-Google Chrome	Profile 18
+$ persnickety --route https://foo.example.com
+Google Chrome	Profile 3
 ```
 
 Prints the decision and launches nothing.
