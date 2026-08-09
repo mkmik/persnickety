@@ -76,3 +76,9 @@ app is already running — which would silently ignore `--profile-directory` and
 send every URL to whichever profile Chrome happened to open last.
 
 To go back to Finicky, pick it again in System Settings.
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE).
+
+Depends on [TOMLDecoder](https://github.com/dduan/TOMLDecoder) (MIT).
