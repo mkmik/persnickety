@@ -108,7 +108,11 @@ final class Router {
 
     private func target(for raw: String) -> (rule: Rule, profileDir: String?) {
         reloadIfChanged()
-        let host = URL(string: raw)?.host()?.lowercased() ?? ""
+        let url = URL(string: raw)
+        // RFC 8089: an empty host in a file: URL means localhost. That gives the
+        // SAML POST file a VPN client hands us something to route on — put
+        // "localhost" in the rule whose profile should own the login.
+        let host = url?.host()?.lowercased() ?? (url?.isFileURL == true ? "localhost" : "")
         let rule = rule(for: host)
         return (rule, rule.profile.map(resolve))
     }
@@ -202,6 +206,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func handleURLEvent(_ event: NSAppleEventDescriptor, reply: NSAppleEventDescriptor) {
         guard let url = event.paramDescriptor(forKeyword: keyDirectObject)?.stringValue else { return }
         router.open(url)
+    }
+
+    /// Files, not URLs: the default browser is also the default HTML handler, and
+    /// GlobalProtect logs you in by opening a temp `_samlpost_*.html`.
+    func application(_ sender: NSApplication, openFiles filenames: [String]) {
+        for path in filenames { router.open(URL(filePath: path).absoluteString) }
+        sender.reply(toOpenOrPrint: .success)
     }
 
     @objc private func openConfig() {

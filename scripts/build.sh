@@ -31,6 +31,25 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 	<string>13.0</string>
 	<key>LSUIElement</key>
 	<true/>
+	<!-- Being the default browser also makes us the handler for HTML documents:
+	     VPN clients (GlobalProtect) write the SAML POST form to a temp .html and
+	     open it as a file. Without this, LaunchServices refuses with "persnickety
+	     cannot open files in the HTML text format." -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>HTML document</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.html</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

@@ -47,7 +47,9 @@ profile = "Personal"
 ```
 
 - **hosts** — matched exactly or as a suffix. `example.com` matches
-  `example.com` and `foo.example.com`, but not `notexample.com`.
+  `example.com` and `foo.example.com`, but not `notexample.com`. Local files
+  match `localhost` — the default browser is also the default HTML handler, and
+  VPN clients like GlobalProtect log you in by opening a temp `.html`.
 - **browser** — application name in `/Applications`.
 - **profile** — Chrome profile as shown in Chrome's own UI (`Work`), or the
   literal directory (`Profile 3`). Two profiles can share a display name; use

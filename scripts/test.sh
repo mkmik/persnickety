@@ -33,6 +33,7 @@ check "$CFG" https://foo.bar.example.com/x 'Google Chrome\tProfile 3' "suffix ma
 check "$CFG" https://example.com           'Google Chrome\tProfile 3' "exact match"
 check "$CFG" http://localhost:3000/        'Google Chrome\tProfile 3' "port ignored"
 check "$CFG" https://news.ycombinator.com  'Firefox\t-'               "catch-all rule"
+check "$CFG" file:///tmp/_samlpost_1.html  'Google Chrome\tProfile 3' "file: URL is localhost"
 # tighter than finicky's unanchored /login\.example\.net$/, which matches this
 check "$CFG" https://evillogin.example.net 'Firefox\t-'               "suffix needs a dot"
 check /nonexistent/config.toml https://example.com 'Safari\t-'        "broken config falls back"
