@@ -129,7 +129,11 @@ final class Router {
             // honors the profile. NSWorkspace's `arguments` are ignored when the
             // app is already up, which is almost always.
             process.executableURL = URL(filePath: chromeBinary)
-            process.arguments = ["--profile-directory=\(dir)", raw]
+            // Normalize, and put the URL after `--`: the normalized form parses to the
+            // same host in Chrome we routed on (a raw `\` splits differently under
+            // Chrome's WHATWG parser than Foundation's), and `--` stops a `--flag`-shaped
+            // URL from being read as a Chrome switch.
+            process.arguments = ["--profile-directory=\(dir)", "--", URL(string: raw)?.absoluteString ?? raw]
         } else {
             process.executableURL = URL(filePath: "/usr/bin/open")
             process.arguments = ["-a", rule.browser, raw]
