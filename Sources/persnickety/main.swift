@@ -45,9 +45,13 @@ final class Router {
             .appending(path: ".config/persnickety/config.toml")
     }()
 
-    // ponytail: last resort so a missing or broken config never eats a click.
-    // Safari is the one browser guaranteed to be installed.
-    private static let lastResort = Rule(browser: "Safari")
+    // Last resort when no rule matches — including a missing or broken config.
+    // No profile means no `--profile-directory`, so Chrome puts the URL in
+    // whichever profile is already frontmost. Safari only if Chrome isn't
+    // installed: a click must never be eaten.
+    private static let lastResort = Rule(
+        browser: FileManager.default.fileExists(atPath: "/Applications/Google Chrome.app")
+            ? "Google Chrome" : "Safari")
 
     private var rules: [Rule] = []
     private var profileDirs: [String: String] = [:]
