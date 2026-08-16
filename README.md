@@ -56,7 +56,9 @@ profile = "Personal"
   the directory to disambiguate.
 
 Rules are tried in order, first match wins. Edits apply on the next click — no
-restart. If the config is missing or malformed, URLs go to Safari.
+restart. If nothing matches — no catch-all, or a missing or malformed config —
+the URL goes to Chrome's currently active profile (Safari if Chrome isn't
+installed).
 
 Anything that would drop a click — an unparseable config, a `browser` that
 isn't installed — raises an alert and is logged (`log stream --predicate

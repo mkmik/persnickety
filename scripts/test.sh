@@ -36,6 +36,8 @@ check "$CFG" https://news.ycombinator.com  'Firefox\t-'               "catch-all
 check "$CFG" file:///tmp/_samlpost_1.html  'Google Chrome\tProfile 3' "file: URL is localhost"
 # tighter than finicky's unanchored /login\.example\.net$/, which matches this
 check "$CFG" https://evillogin.example.net 'Firefox\t-'               "suffix needs a dot"
-check /nonexistent/config.toml https://example.com 'Safari\t-'        "broken config falls back"
+# no rule = no profile flag = whatever profile Chrome is showing right now
+[ -d "/Applications/Google Chrome.app" ] && FALLBACK='Google Chrome' || FALLBACK=Safari
+check /nonexistent/config.toml https://example.com "$FALLBACK\t-"     "broken config falls back"
 
 exit $fail
