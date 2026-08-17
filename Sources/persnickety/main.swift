@@ -1,6 +1,22 @@
 import AppKit
 import Foundation
 import TOMLDecoder
+import os
+
+// MARK: - Logging
+
+/// One subsystem for everything, so the whole life of a click is
+/// `log stream --predicate 'subsystem == "com.mmikulicic.persnickety"'` (or a
+/// "persnickety" search in Console.app). Levels are .notice and up: .debug and
+/// .info are dropped from the on-disk store, and a click that was slow an hour
+/// ago is exactly the one you want to look at.
+let logger = Logger(subsystem: "com.mmikulicic.persnickety", category: "route")
+
+/// Milliseconds since `start`. Every routing step logs one, so a click reads as
+/// a stopwatch rather than a pile of absolute timestamps to subtract.
+func ms(since start: DispatchTime) -> String {
+    String(format: "%.1fms", Double(DispatchTime.now().uptimeNanoseconds - start.uptimeNanoseconds) / 1e6)
+}
 
 // MARK: - Config
 
@@ -66,6 +82,8 @@ final class Router {
         let mtime = (try? FileManager.default.attributesOfItem(atPath: Self.configPath.path))?[.modificationDate] as? Date
         guard mtime != stamp else { return }
         stamp = mtime
+        let t0 = DispatchTime.now()
+        defer { logger.notice("config reloaded in \(ms(since: t0), privacy: .public)") }
         do {
             let text = try String(contentsOf: Self.configPath, encoding: .utf8)
             rules = (try TOMLDecoder().decode(ConfigFile.self, from: text).rule ?? []).map {
@@ -128,7 +146,11 @@ final class Router {
     }
 
     func open(_ raw: String) {
+        let t0 = DispatchTime.now()
+        logger.notice("received \(raw, privacy: .public)")
         let (rule, dir) = target(for: raw)
+        logger.notice(
+            "matched \(rule.browser, privacy: .public) [\(dir ?? "-", privacy: .public)] in \(ms(since: t0), privacy: .public)")
         let process = Process()
         let chromeBinary = "/Applications/\(rule.browser).app/Contents/MacOS/\(rule.browser)"
 
@@ -142,18 +164,27 @@ final class Router {
             // Chrome's WHATWG parser than Foundation's), and `--` stops a `--flag`-shaped
             // URL from being read as a Chrome switch.
             process.arguments = ["--profile-directory=\(dir)", "--", URL(string: raw)?.absoluteString ?? raw]
+            // Fires once the running Chrome's singleton has taken the URL, which is
+            // the number that matters. If Chrome was *not* already running this
+            // process becomes the browser and the handler simply never fires — an
+            // absent "handed off" line is itself the cold-Chrome diagnosis.
+            process.terminationHandler = { child in
+                logger.notice("chrome handed off (exit \(child.terminationStatus)) at \(ms(since: t0), privacy: .public)")
+            }
         } else {
             process.executableURL = URL(filePath: "/usr/bin/open")
             process.arguments = ["-a", rule.browser, raw]
             // Only this branch is watchable: `open` always exits promptly, while
             // Chrome's own binary becomes the browser and lives for hours.
             process.terminationHandler = { child in
+                logger.notice("open(1) exited \(child.terminationStatus) at \(ms(since: t0), privacy: .public)")
                 guard child.terminationStatus != 0 else { return }
                 report("\(rule.browser) did not open \(raw).")
             }
         }
         do {
             try process.run()
+            logger.notice("spawned pid \(process.processIdentifier) at \(ms(since: t0), privacy: .public)")
         } catch {
             report("could not launch \(rule.browser): \(error.localizedDescription)")
         }
@@ -162,10 +193,12 @@ final class Router {
 
 /// A dropped click is the one failure this app must never hide, so: an alert,
 /// not a Notification Center banner — banners are silenced by Focus modes.
-/// NSLog goes to the unified log, and to stderr when stderr is a tty (`--route`).
 func report(_ message: String) {
-    NSLog("persnickety: %@", message)
-    guard NSApp != nil else { return }  // --route has no app to put an alert on
+    logger.error("\(message, privacy: .public)")
+    guard NSApp != nil else {  // --route has no app to put an alert on, and no log to read
+        FileHandle.standardError.write(Data("persnickety: \(message)\n".utf8))
+        return
+    }
     DispatchQueue.main.async {
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
@@ -182,6 +215,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
 
     func applicationWillFinishLaunching(_ notification: Notification) {
+        // Timestamp of this line vs. the next "received": if they're milliseconds
+        // apart the click cold-started us and the launch was on our tab; if this
+        // line is hours old, the delay is entirely in the routing below.
+        logger.notice("launched pid \(ProcessInfo.processInfo.processIdentifier)")
         // Must be here, not didFinishLaunching: a URL that cold-starts us arrives
         // before didFinishLaunching and would be dropped.
         NSAppleEventManager.shared().setEventHandler(
