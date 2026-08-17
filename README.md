@@ -61,9 +61,34 @@ the URL goes to Chrome's currently active profile (Safari if Chrome isn't
 installed).
 
 Anything that would drop a click — an unparseable config, a `browser` that
-isn't installed — raises an alert and is logged (`log stream --predicate
-'process == "persnickety"'`, or Console.app). An alert rather than a
-Notification Center banner, because Focus modes silence banners.
+isn't installed — raises an alert as well as being logged. An alert rather than
+a Notification Center banner, because Focus modes silence banners.
+
+## Watching where the time goes
+
+Every click is logged to the unified log with per-step timings:
+
+```sh
+$ log stream --predicate 'subsystem == "com.mmikulicic.persnickety"'
+received https://example.com/
+matched Google Chrome [Profile 3] in 0.9ms
+spawned pid 40123 at 1.4ms
+chrome handed off (exit 0) at 214.7ms
+```
+
+Past clicks: `log show --last 10m --predicate 'subsystem ==
+"com.mmikulicic.persnickety"'`. In Console.app, search `persnickety`.
+
+Reading it:
+
+- **`launched pid …` right before a `received`** — the click cold-started us;
+  that gap is macOS launching the app, not routing.
+- **`matched` slow** — config reload (a `config reloaded` line says so) or
+  Chrome's `Local State` parse.
+- **`chrome handed off` late** — the time is Chrome's, not ours: each URL
+  spawns a fresh Chrome binary that relays to the running instance and exits.
+- **no `chrome handed off` at all** — Chrome wasn't running, so that spawned
+  process *became* Chrome. All the delay is Chrome's cold start.
 
 Chrome only for profiles. Other browsers launch, but ignore `profile`.
 
