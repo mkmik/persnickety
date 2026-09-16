@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import TOMLDecoder
+import UniformTypeIdentifiers
 import os
 
 // MARK: - Logging
@@ -267,6 +268,74 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+// MARK: - Registration
+
+/// Asks LaunchServices to make this bundle the default handler for http(s)
+/// and HTML documents. The completion handler's error is not trustworthy on
+/// its own: LaunchServices sometimes reports a spurious permErr even when the
+/// change sticks (e.g. re-asserting a value that's already us), and sometimes
+/// reports success-shaped silence while quietly declining a change that
+/// requires interactive consent it can't obtain from a background process.
+/// So each request is followed by reading back the *actual* default and
+/// comparing it to our own bundle ID — that's what decides success, not the
+/// callback error.
+func registerAsDefault() {
+    let bundleID = Bundle.main.bundleIdentifier
+    let bundleURL = Bundle.main.bundleURL
+    var failures: [String] = []
+
+    // Run one request at a time and wait for it to land before starting the
+    // next: firing them concurrently races on the LaunchServices database.
+    func run(_ body: @escaping (@escaping (Error?) -> Void) -> Void) {
+        var done = false
+        body { _ in done = true }
+        // The completion handler lands on the main run loop, so pump it
+        // instead of blocking — that would starve it and hang forever.
+        while !done {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.05))
+        }
+    }
+
+    for scheme in ["http", "https"] {
+        run { completion in
+            NSWorkspace.shared.setDefaultApplication(at: bundleURL, toOpenURLsWithScheme: scheme, completion: completion)
+        }
+        let current = NSWorkspace.shared.urlForApplication(toOpen: URL(string: "\(scheme)://example.com")!)
+            .flatMap(Bundle.init(url:))?.bundleIdentifier
+        if current != bundleID {
+            failures.append("\(scheme): still handled by \(current ?? "no app")")
+        }
+    }
+
+    run { completion in
+        NSWorkspace.shared.setDefaultApplication(at: bundleURL, toOpen: .html, completion: completion)
+    }
+    let currentHTML = NSWorkspace.shared.urlForApplication(toOpen: .html).flatMap(Bundle.init(url:))?.bundleIdentifier
+    if currentHTML != bundleID {
+        failures.append("html: still handled by \(currentHTML ?? "no app")")
+    }
+
+    if failures.isEmpty {
+        print("persnickety registered as the default browser.")
+        return
+    }
+
+    FileHandle.standardError.write(Data("""
+        Could not self-register as default browser:
+          \(failures.joined(separator: "\n  "))
+
+        This usually means macOS wants interactive consent that a background
+        process can't obtain. Set it by hand instead:
+          System Settings → Desktop & Dock → Default web browser → persnickety
+
+        If persnickety isn't in that list, LaunchServices hasn't seen the
+        bundle yet:
+          /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f \(bundleURL.path)
+
+        """.utf8))
+    exit(1)
+}
+
 // MARK: - Entry
 
 let arguments = Array(CommandLine.arguments.dropFirst())
@@ -275,11 +344,15 @@ if !arguments.isEmpty {
         print(Router().describe(arguments[1]))
         exit(0)
     }
+    if arguments == ["--register"] {
+        registerAsDefault()
+        exit(0)
+    }
     // Anything unrecognized exits instead of falling through to app.run(), where
     // a typo would silently start a second menubar instance and appear to hang.
     let help = arguments == ["--help"]
     FileHandle(fileDescriptor: help ? 1 : 2)
-        .write(Data("usage: persnickety [--route <url>]\n".utf8))
+        .write(Data("usage: persnickety [--route <url>] [--register]\n".utf8))
     exit(help ? 0 : 2)
 }
 

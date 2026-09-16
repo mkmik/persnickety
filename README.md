@@ -18,13 +18,18 @@ cp -R dist/persnickety.app /Applications/
 open /Applications/persnickety.app
 ```
 
-Then System Settings → Desktop & Dock → Default web browser → **persnickety**.
-If it isn't in the list, LaunchServices hasn't seen the bundle yet:
+Then make it the default browser — either let it try itself:
 
 ```sh
-/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
-  -f /Applications/persnickety.app
+/Applications/persnickety.app/Contents/MacOS/persnickety --register
 ```
+
+or by hand: System Settings → Desktop & Dock → Default web browser →
+**persnickety**. `--register` uses the same LaunchServices API and often
+succeeds silently, but macOS sometimes requires interactive consent that a
+background process can't obtain — in that case `--register` exits 1 and
+prints the manual steps, including the `lsregister -f` incantation for when
+persnickety isn't in the list yet (LaunchServices hasn't seen the bundle).
 
 It runs as a menubar item (no Dock icon): **Open Config**, **Quit**. Opening
 the config writes a starter file if you don't have one yet.
